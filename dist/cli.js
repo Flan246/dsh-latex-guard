@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-DO-jEreW.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-DnzdnGVx.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Command } from "commander";

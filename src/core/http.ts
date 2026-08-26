@@ -11,22 +11,27 @@ const cache = new Map<string, { data: unknown; expiry: number }>()
 
 export function clearHttpCache(): void {
   cache.clear()
+  resetProxyAgent()
 }
 
 let cachedProxy: { url: string; agent: ProxyAgent } | null = null
+
+function resetProxyAgent(): void {
+  if (cachedProxy) {
+    void cachedProxy.agent.close()
+    cachedProxy = null
+  }
+}
 
 function proxyDispatcher(): ProxyAgent | undefined {
   const proxy =
     process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy
   if (!proxy) {
-    if (cachedProxy) {
-      void cachedProxy.agent.close()
-      cachedProxy = null
-    }
+    resetProxyAgent()
     return undefined
   }
   if (cachedProxy?.url !== proxy) {
-    if (cachedProxy) void cachedProxy.agent.close()
+    resetProxyAgent()
     cachedProxy = { url: proxy, agent: new ProxyAgent(proxy) }
   }
   return cachedProxy.agent
@@ -71,8 +76,9 @@ export async function fetchJson(url: string): Promise<Result<unknown>> {
     try {
       let res = await request(url)
       if (res.status === 429) {
-        // Drain the body so undici can reuse the connection; failure must not block the retry.
-        try { await (res.body as unknown as { dump(): Promise<unknown> } | null)?.dump() } catch { /* ignore */ }
+        // Drain the body so undici can reuse the connection; cancel is the standard
+        // ReadableStream method (fetch bodies have no dump()). Failure must not block the retry.
+        try { await res.body?.cancel() } catch { /* ignore */ }
         await sleep(retryAfterMs(res))
         res = await request(url)
         if (res.status === 429) return err('RATE_LIMITED', `429: ${url}`)

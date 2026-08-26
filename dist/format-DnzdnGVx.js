@@ -163,17 +163,20 @@ const CACHE_MAX = 200;
 const CACHE_EVICT_BATCH = 20;
 const cache = /* @__PURE__ */ new Map();
 let cachedProxy = null;
+function resetProxyAgent() {
+	if (cachedProxy) {
+		cachedProxy.agent.close();
+		cachedProxy = null;
+	}
+}
 function proxyDispatcher() {
 	const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
 	if (!proxy) {
-		if (cachedProxy) {
-			cachedProxy.agent.close();
-			cachedProxy = null;
-		}
+		resetProxyAgent();
 		return;
 	}
 	if (cachedProxy?.url !== proxy) {
-		if (cachedProxy) cachedProxy.agent.close();
+		resetProxyAgent();
 		cachedProxy = {
 			url: proxy,
 			agent: new ProxyAgent(proxy)
@@ -221,7 +224,7 @@ async function fetchJson(url) {
 		let res = await request(url);
 		if (res.status === 429) {
 			try {
-				await res.body?.dump();
+				await res.body?.cancel();
 			} catch {}
 			await sleep(retryAfterMs(res));
 			res = await request(url);

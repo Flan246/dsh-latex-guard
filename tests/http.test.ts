@@ -24,7 +24,7 @@ function jsonResponse(status: number, body: unknown = {}, headers: Record<string
     ok: status >= 200 && status < 300,
     headers: { get: (k: string) => headers[k.toLowerCase()] ?? null },
     json: async () => body,
-    body: { dump: vi.fn(async () => undefined) },
+    body: { cancel: vi.fn(async () => undefined) },
   }
 }
 
@@ -105,8 +105,22 @@ describe('fetchJson', () => {
     fetchMock.mockResolvedValueOnce(first).mockResolvedValueOnce(jsonResponse(200, { ok: 1 }))
     const r = await fetchJson('https://api.example.com/x')
     expect(r.ok).toBe(true)
-    expect(first.body.dump).toHaveBeenCalledTimes(1)
+    expect(first.body.cancel).toHaveBeenCalledTimes(1)
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('clearHttpCache also resets the cached ProxyAgent', async () => {
+    process.env.HTTPS_PROXY = 'http://127.0.0.1:7897'
+    fetchMock.mockResolvedValue(jsonResponse(200))
+    await fetchJson('https://api.example.com/a')
+    clearHttpCache()
+    await fetchJson('https://api.example.com/b')
+    const d1 = (fetchMock.mock.calls[0][1] as { dispatcher?: unknown }).dispatcher
+    const d2 = (fetchMock.mock.calls[1][1] as { dispatcher?: unknown }).dispatcher
+    expect(d1).toBeInstanceOf(ProxyAgent)
+    expect(d2).toBeInstanceOf(ProxyAgent)
+    expect(d2).not.toBe(d1)
+    expect(proxyAgentSpy).toHaveBeenCalledTimes(2)
   })
 
   it('retries once after 429 honoring Retry-After and succeeds', async () => {
