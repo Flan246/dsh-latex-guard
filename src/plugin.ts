@@ -25,6 +25,15 @@ async function readOrError(path: string): Promise<Result<string>> {
   }
 }
 
+async function writeOrError(path: string, content: string): Promise<Result<null>> {
+  try {
+    await writeFile(path, content, 'utf8')
+    return { ok: true, data: null }
+  } catch (e) {
+    return { ok: false, error: { code: 'WRITE_FAILED', message: `write failed: ${path}: ${(e as Error).message}` } }
+  }
+}
+
 export function apply(ctx: Context) {
   ctx.tools.register(defineTool({
     name: 'latex_check',
@@ -57,7 +66,10 @@ export function apply(ctx: Context) {
       const r = await readOrError(args.path)
       if (!r.ok) return { error: r.error }
       const { issues, fixed } = lintBib(r.data)
-      if (args.write) await writeFile(args.path, fixed)
+      if (args.write) {
+        const w = await writeOrError(args.path, fixed)
+        if (!w.ok) return { error: w.error }
+      }
       // LintIssue is an interface; see asValue note above.
       return { issues, fixed: args.write ? '(written back)' : fixed } as any
     },
@@ -79,7 +91,10 @@ export function apply(ctx: Context) {
       if (!r.ok) return { error: r.error }
       const filled = await fillBib(r.data)
       if (!filled.ok) return { error: filled.error }
-      if (args.write) await writeFile(args.path, filled.data.fixed)
+      if (args.write) {
+        const w = await writeOrError(args.path, filled.data.fixed)
+        if (!w.ok) return { error: w.error }
+      }
       return filled.data
     },
   }))

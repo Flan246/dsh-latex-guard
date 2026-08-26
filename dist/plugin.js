@@ -22,6 +22,23 @@ async function readOrError(path) {
 		};
 	}
 }
+async function writeOrError(path, content) {
+	try {
+		await writeFile(path, content, "utf8");
+		return {
+			ok: true,
+			data: null
+		};
+	} catch (e) {
+		return {
+			ok: false,
+			error: {
+				code: "WRITE_FAILED",
+				message: `write failed: ${path}: ${e.message}`
+			}
+		};
+	}
+}
 function apply(ctx) {
 	ctx.tools.register(defineTool({
 		name: "latex_check",
@@ -80,7 +97,10 @@ function apply(ctx) {
 			const r = await readOrError(args.path);
 			if (!r.ok) return { error: r.error };
 			const { issues, fixed } = lintBib(r.data);
-			if (args.write) await writeFile(args.path, fixed);
+			if (args.write) {
+				const w = await writeOrError(args.path, fixed);
+				if (!w.ok) return { error: w.error };
+			}
 			return {
 				issues,
 				fixed: args.write ? "(written back)" : fixed
@@ -116,7 +136,10 @@ function apply(ctx) {
 			if (!r.ok) return { error: r.error };
 			const filled = await fillBib(r.data);
 			if (!filled.ok) return { error: filled.error };
-			if (args.write) await writeFile(args.path, filled.data.fixed);
+			if (args.write) {
+				const w = await writeOrError(args.path, filled.data.fixed);
+				if (!w.ok) return { error: w.error };
+			}
 			return filled.data;
 		}
 	}));
