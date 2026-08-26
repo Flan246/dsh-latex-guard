@@ -11,7 +11,7 @@
   "engines": { "node": ">=20" },
   "repository": {
     "type": "git",
-    "url": "https://github.com/FSMargoo/dsh-latex-guard.git"
+    "url": "https://github.com/Flan246/dsh-latex-guard.git"
   },
   "keywords": ["deepseek-harness", "dsh-plugin", "latex", "bibtex", "lint", "crossref"],
   "scripts": {
@@ -23,6 +23,10 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-tools": "^0.1.1-rc.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": { "optional": true },
+    "@deepseek-ai/dsh-tools": { "optional": true }
   },
   "dependencies": { "commander": "^14.0.0" },
   "devDependencies": {
