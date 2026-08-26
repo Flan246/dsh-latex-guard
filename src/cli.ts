@@ -2,25 +2,14 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { Command } from 'commander'
-import { lintBib, type LintIssue } from './core/bib-lint.js'
+import { lintBib } from './core/bib-lint.js'
 import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
-import { checkLatex, type CheckReport } from './core/check.js'
+import { checkLatex } from './core/check.js'
+import { formatIssues, formatReport } from './core/format.js'
 import { err, type Result } from './core/types.js'
 
-export function formatIssues(issues: LintIssue[]): string {
-  if (issues.length === 0) return 'No issues found.'
-  return issues.map((i) => `[${i.kind}] ${i.key}: ${i.detail}`).join('\n')
-}
-
-export function formatReport(r: CheckReport): string {
-  const lines = [`status: ${r.status}`]
-  if (r.notice) lines.push(`notice: ${r.notice}`)
-  for (const e of r.errors) lines.push(`ERROR${e.line ? ` (line ${e.line})` : ''}: ${e.message}`)
-  for (const w of r.warnings) lines.push(`warn: ${w.message}`)
-  if (r.missingCitations.length) lines.push(`missing citations: ${r.missingCitations.join(', ')}`)
-  return lines.join('\n')
-}
+export { formatIssues, formatReport }
 
 function print<T>(r: Result<T>, asJson: boolean, render: (d: T) => string): void {
   if (!r.ok) {
