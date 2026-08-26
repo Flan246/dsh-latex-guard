@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { ProxyAgent, fetch } from "undici";
 import { execFile } from "node:child_process";
 import { basename, join } from "node:path";
 
@@ -155,25 +156,67 @@ function err(code, message) {
 
 //#endregion
 //#region src/core/http.ts
-const UA = "dsh-latex-guard/0.1.0 (mailto:latex-guard@users.noreply.github.com)";
+const UA = "dsh-latex-guard/0.1.1 (mailto:latex-guard@users.noreply.github.com)";
 const TIMEOUT_MS = 1e4;
+const CACHE_TTL_MS = 300 * 1e3;
+const CACHE_MAX = 200;
+const CACHE_EVICT_BATCH = 20;
+const cache = /* @__PURE__ */ new Map();
+function proxyDispatcher() {
+	const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+	return proxy ? new ProxyAgent(proxy) : void 0;
+}
+let sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function retryAfterMs(res) {
+	const raw = res.headers.get("retry-after");
+	const seconds = raw === null ? NaN : Number(raw);
+	return (Number.isFinite(seconds) && seconds >= 0 ? seconds : 1) * 1e3;
+}
+function cacheSet(url, data) {
+	if (cache.size >= CACHE_MAX) {
+		let removed = 0;
+		for (const key of cache.keys()) {
+			cache.delete(key);
+			if (++removed >= CACHE_EVICT_BATCH) break;
+		}
+	}
+	cache.set(url, {
+		data,
+		expiry: Date.now() + CACHE_TTL_MS
+	});
+}
+async function request(url) {
+	return fetch(url, {
+		headers: {
+			"User-Agent": UA,
+			Accept: "application/json"
+		},
+		signal: AbortSignal.timeout(TIMEOUT_MS),
+		dispatcher: proxyDispatcher()
+	});
+}
 async function fetchJson(url) {
+	const hit = cache.get(url);
+	if (hit) {
+		if (hit.expiry > Date.now()) return ok(hit.data);
+		cache.delete(url);
+	}
 	let lastErr = null;
 	for (let attempt = 0; attempt < 2; attempt++) try {
-		const res = await fetch(url, {
-			headers: {
-				"User-Agent": UA,
-				Accept: "application/json"
-			},
-			signal: AbortSignal.timeout(TIMEOUT_MS)
-		});
+		let res = await request(url);
+		if (res.status === 429) {
+			await sleep(retryAfterMs(res));
+			res = await request(url);
+			if (res.status === 429) return err("RATE_LIMITED", `429: ${url}`);
+		}
 		if (res.status === 404) return err("NOT_FOUND", `404: ${url}`);
-		if (res.status === 429) return err("RATE_LIMITED", `429: ${url}`);
 		if (!res.ok) {
 			lastErr = err("HTTP_" + res.status, `${res.status}: ${url}`);
 			continue;
 		}
-		return ok(await res.json());
+		const data = await res.json();
+		cacheSet(url, data);
+		return ok(data);
 	} catch (e) {
 		lastErr = err("NETWORK", e instanceof Error ? e.message : String(e));
 	}

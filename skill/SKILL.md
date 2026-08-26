@@ -5,6 +5,8 @@ description: Check LaTeX projects and clean BibTeX files. Use when the user edit
 
 # LaTeX Guard
 
+If the host already has latex/bib plugin tools registered (latex_check/bib_lint/bib_fill/cite_audit), prefer calling those tools directly instead of the CLI.
+
 Run the bundled CLI (installed as `dsh-latex-guard`, or `npx dsh-latex-guard`):
 
 - `dsh-latex-guard check <dir> <entry.tex> [--json]` — latexmk compile + structured error report (skips gracefully if no LaTeX installed)

@@ -1,4 +1,4 @@
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-BiXmGarB.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-BjpiKbQa.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
