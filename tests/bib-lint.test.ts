@@ -28,6 +28,12 @@ describe('lintBib', () => {
     expect(miss?.detail).toContain('year')
   })
 
+  it('flags book missing title', () => {
+    const { issues } = lintBib('@book{b1,\n  author={A},\n  publisher={P},\n  year={2020},\n}\n')
+    const miss = issues.find((i) => i.kind === 'missing-field' && i.key === 'b1')
+    expect(miss?.detail).toContain('title')
+  })
+
   it('clean input yields no issues and canonical formatting', () => {
     const { issues, fixed } = lintBib('@article{x,\n  author={A},\n  title={T},\n  journal={J},\n  year={2020},\n}\n')
     expect(issues).toEqual([])

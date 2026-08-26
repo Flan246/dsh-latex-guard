@@ -14,11 +14,7 @@ const REQUIRED: Record<string, string[]> = {
 }
 
 function requiredFields(e: BibEntry): string[] {
-  const base = REQUIRED[e.type] ?? ['author', 'title', 'year']
-  if (e.type === 'book' && (e.fields.author || e.fields.editor)) {
-    return base // author/editor 任一即可，其余照常
-  }
-  return base
+  return REQUIRED[e.type] ?? ['author', 'title', 'year']
 }
 
 export function lintBib(text: string): { issues: LintIssue[]; fixed: string } {
@@ -33,10 +29,7 @@ export function lintBib(text: string): { issues: LintIssue[]; fixed: string } {
     }
     seen.add(e.key)
     kept.push(e)
-    const missing = requiredFields(e).filter((f) => {
-      if (e.type === 'book' && f === 'title') return false // book 单独校验 author/editor 见下
-      return !e.fields[f]?.trim()
-    })
+    const missing = requiredFields(e).filter((f) => !e.fields[f]?.trim())
     if (e.type === 'book' && !e.fields.author?.trim() && !e.fields.editor?.trim()) {
       missing.push('author/editor')
     }
