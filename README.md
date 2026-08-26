@@ -24,13 +24,15 @@ Registers four agent tools: `latex_check`, `bib_lint`, `bib_fill`, `cite_audit`.
 ### 2. As a standalone CLI
 
 ```bash
-npx dsh-latex-guard check <dir> <entry.tex> [--json]
+npx dsh-latex-guard check <dir> <entry.tex> [--engine <name>] [--json]
 npx dsh-latex-guard bib-lint <file.bib> [--write]
 npx dsh-latex-guard bib-fill <file.bib> [--write]
 npx dsh-latex-guard cite-audit <file.bib> <tex...>
 ```
 
 `--write` modifies the bib in place — confirm before using it. As a safety net, both write paths refuse to write when the bib cannot be fully parsed (e.g. an entry missing its closing brace), instead of silently dropping the unparseable tail.
+
+`check --engine <name>` selects the latexmk engine: `auto` (default), `pdflatex`, `xelatex` or `lualatex`. In `auto` mode the engine is detected from the entry tex (and a local `\documentclass` file): a `% !TeX program = ...` magic comment, `\RequireXeTeX`, `xeCJK` or `{ctex` select xelatex, `\RequireLuaTeX` selects lualatex, otherwise pdflatex. The report's `engine` field records the engine actually used; when a compile fails without any parseable error line, the report also carries a `logTail` with the last lines of the latexmk log.
 
 ## Known limitations
 

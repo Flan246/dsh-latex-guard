@@ -4,7 +4,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { lintBib } from './core/bib-lint.js'
 import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
-import { checkLatex } from './core/check.js'
+import { checkLatex, type Engine } from './core/check.js'
 import { isFullyParsed } from './core/bib-parse.js'
 import { formatIssues, formatReport } from './core/format.js'
 import type { Result } from './core/types.js'
@@ -52,13 +52,15 @@ export function apply(ctx: Context) {
     parameters: {
       dir: { type: 'string', required: true, description: 'Absolute path of the LaTeX project directory' },
       entry: { type: 'string', required: true, description: 'Entry .tex filename relative to dir, e.g. main.tex' },
+      engine: { type: 'string', description: 'latexmk engine: auto (default, detects XeTeX/LuaTeX markers), pdflatex, xelatex or lualatex' },
     },
     output: {
       schema: { type: 'object', additionalProperties: true },
       render: (_args, v: any) => [{ type: 'text', text: v?.error ? `Check failed: ${v.error.message}` : formatReport(v) }],
     },
     async execute(args) {
-      return asValue(await checkLatex(args.dir, args.entry))
+      return asValue(await checkLatex(args.dir, args.entry,
+        args.engine ? { engine: args.engine as 'auto' | Engine } : {}))
     },
   }))
 

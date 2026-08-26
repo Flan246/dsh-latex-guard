@@ -7,10 +7,11 @@ export function formatIssues(issues: LintIssue[]): string {
 }
 
 export function formatReport(r: CheckReport): string {
-  const lines = [`status: ${r.status}`]
+  const lines = [`status: ${r.status}`, `engine: ${r.engine}`]
   if (r.notice) lines.push(`notice: ${r.notice}`)
   for (const e of r.errors) lines.push(`ERROR${e.line ? ` (line ${e.line})` : ''}: ${e.message}`)
   for (const w of r.warnings) lines.push(`warn: ${w.message}`)
   if (r.missingCitations.length) lines.push(`missing citations: ${r.missingCitations.join(', ')}`)
+  if (r.logTail) lines.push(`--- log tail ---\n${r.logTail}`)
   return lines.join('\n')
 }

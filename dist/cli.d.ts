@@ -19,10 +19,12 @@ interface LogIssue {
 }
 interface CheckReport {
   status: 'passed' | 'failed' | 'skipped';
+  engine: string;
   errors: LogIssue[];
   warnings: LogIssue[];
   missingCitations: string[];
   notice: string | null;
+  logTail: string | null;
 }
 //#endregion
 //#region src/core/bib-lint.d.ts

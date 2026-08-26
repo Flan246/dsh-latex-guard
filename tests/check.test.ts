@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { checkLatex, defaultRun, parseLog } from '../src/core/check.js'
+import { formatReport } from '../src/core/format.js'
 
 const LOG = `./main.tex:12: Undefined control sequence.
 ! Undefined control sequence.
@@ -39,6 +40,139 @@ describe('checkLatex', () => {
     })
     expect(r.ok && r.data.status).toBe('failed')
     expect(r.ok && r.data.errors.length).toBeGreaterThan(0)
+  })
+})
+
+describe('engine detection', () => {
+  const runArgs = async (tex: string, engine?: 'auto' | 'pdflatex' | 'xelatex' | 'lualatex') => {
+    const run = vi.fn(async (_cmd: string, _args: string[], _cwd: string) => ({ code: 0, log: '' }))
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run,
+      readFile: async () => tex,
+      ...(engine ? { engine } : {}),
+    })
+    expect(r.ok).toBe(true)
+    return run.mock.calls[0]![1]
+  }
+
+  it('detects xelatex for \\RequireXeTeX', async () => {
+    expect(await runArgs('\\RequireXeTeX\n\\documentclass{article}')).toContain('-xelatex')
+  })
+
+  it('detects xelatex for xeCJK', async () => {
+    expect(await runArgs('\\usepackage{xeCJK}')).toContain('-xelatex')
+  })
+
+  it('detects xelatex for ctex class/package', async () => {
+    expect(await runArgs('\\documentclass{ctexart}')).toContain('-xelatex')
+  })
+
+  it('detects lualatex for \\RequireLuaTeX', async () => {
+    expect(await runArgs('\\RequireLuaTeX')).toContain('-lualatex')
+  })
+
+  it('falls back to pdflatex for plain tex', async () => {
+    const args = await runArgs('\\documentclass{article}')
+    expect(args).toContain('-pdf')
+    expect(args).not.toContain('-xelatex')
+  })
+
+  it('honors the % !TeX program magic comment', async () => {
+    expect(await runArgs('% !TeX program = xelatex\n\\documentclass{article}')).toContain('-xelatex')
+  })
+
+  it('detects xelatex from a local document class file', async () => {
+    const run = vi.fn(async (_cmd: string, _args: string[], _cwd: string) => ({ code: 0, log: '' }))
+    await checkLatex('/p', 'paper.tex', {
+      which: async () => true,
+      run,
+      readFile: async (p: string) =>
+        p.endsWith('.cls') ? '\\RequireXeTeX\n\\RequirePackage{ctex}' : '\\documentclass{cumcmthesis}',
+    })
+    expect(run.mock.calls[0]![1]).toContain('-xelatex')
+  })
+
+  it('explicit engine overrides detection', async () => {
+    expect(await runArgs('\\RequireXeTeX', 'pdflatex')).toContain('-pdf')
+    expect(await runArgs('\\documentclass{article}', 'xelatex')).toContain('-xelatex')
+  })
+
+  it('reports the engine actually used', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 0, log: '' }),
+      readFile: async () => '\\RequireXeTeX',
+    })
+    expect(r.ok && r.data.engine).toBe('xelatex')
+  })
+})
+
+describe('parseLog star blocks', () => {
+  it('captures XeTeX required blocks as an error', () => {
+    const log = '*************************************************\n' +
+      '* XeTeX is required to compile this document.\n' +
+      '* Sorry!\n' +
+      '*************************************************\n'
+    const r = parseLog(log)
+    expect(r.errors).toHaveLength(1)
+    expect(r.errors[0]!.message).toContain('XeTeX is required')
+    expect(r.errors[0]!.line).toBeNull()
+    expect(r.errors[0]!.file).toBeNull()
+  })
+
+  it('ignores harmless asterisk decorations', () => {
+    const r = parseLog('* just a note\n* another note\n')
+    expect(r.errors).toHaveLength(0)
+  })
+
+  it('matches blocks indented by latexmk with CRLF endings', () => {
+    const log = ' ********************************************\r\n' +
+      ' * XeTeX is required to compile this document.\r\n' +
+      ' * Sorry!\r\n' +
+      ' ********************************************\r\n'
+    const r = parseLog(log)
+    expect(r.errors).toHaveLength(1)
+    expect(r.errors[0]!.message).toContain('XeTeX is required')
+  })
+})
+
+describe('logTail', () => {
+  it('fills logTail when failed with no parseable errors', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 12, log: 'compiling...\nweird failure without bang lines\n' }),
+      readFile: async () => 'x',
+    })
+    expect(r.ok && r.data.status).toBe('failed')
+    expect(r.ok && r.data.logTail).toContain('weird failure')
+  })
+
+  it('keeps logTail null on passed', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 0, log: 'all good\n' }),
+      readFile: async () => 'x',
+    })
+    expect(r.ok && r.data.status).toBe('passed')
+    expect(r.ok && r.data.logTail).toBeNull()
+  })
+})
+
+describe('formatReport engine and logTail', () => {
+  const base = {
+    errors: [], warnings: [], missingCitations: [], notice: null,
+    engine: 'xelatex', logTail: null,
+  }
+
+  it('shows the engine line after the status', () => {
+    const out = formatReport({ ...base, status: 'passed' })
+    expect(out.split('\n')[1]).toBe('engine: xelatex')
+  })
+
+  it('appends the log tail section when present', () => {
+    const out = formatReport({ ...base, status: 'failed', logTail: 'tail content' })
+    expect(out).toContain('--- log tail ---\ntail content')
   })
 })
 

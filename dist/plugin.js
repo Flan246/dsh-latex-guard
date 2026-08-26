@@ -1,4 +1,4 @@
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-CiZyWdTT.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-BiXmGarB.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
@@ -59,6 +59,10 @@ function apply(ctx) {
 				type: "string",
 				required: true,
 				description: "Entry .tex filename relative to dir, e.g. main.tex"
+			},
+			engine: {
+				type: "string",
+				description: "latexmk engine: auto (default, detects XeTeX/LuaTeX markers), pdflatex, xelatex or lualatex"
 			}
 		},
 		output: {
@@ -72,7 +76,7 @@ function apply(ctx) {
 			}]
 		},
 		async execute(args) {
-			return asValue(await checkLatex(args.dir, args.entry));
+			return asValue(await checkLatex(args.dir, args.entry, args.engine ? { engine: args.engine } : {}));
 		}
 	}));
 	ctx.tools.register(defineTool({

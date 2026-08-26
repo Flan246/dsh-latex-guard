@@ -19,8 +19,9 @@ describe('formatIssues', () => {
 describe('formatReport', () => {
   it('shows status and counts', () => {
     const out = formatReport({
-      status: 'failed', errors: [{ line: 12, message: 'boom', file: null }],
-      warnings: [], missingCitations: ['ghost'], notice: null,
+      status: 'failed', engine: 'pdflatex',
+      errors: [{ line: 12, message: 'boom', file: null }],
+      warnings: [], missingCitations: ['ghost'], notice: null, logTail: null,
     })
     expect(out).toContain('failed')
     expect(out).toContain('boom')
@@ -37,15 +38,16 @@ describe('printCheck exit code', () => {
     printCheck({
       ok: true,
       data: {
-        status: 'failed', errors: [{ line: 3, message: 'boom', file: null }],
-        warnings: [], missingCitations: [], notice: null,
+        status: 'failed', engine: 'pdflatex',
+        errors: [{ line: 3, message: 'boom', file: null }],
+        warnings: [], missingCitations: [], notice: null, logTail: null,
       },
     }, true)
     expect(process.exitCode).toBe(1)
   })
 
   it('keeps exit code 0 for passed and skipped (graceful degradation)', () => {
-    const base = { errors: [], warnings: [], missingCitations: [], notice: null }
+    const base = { engine: 'pdflatex', errors: [], warnings: [], missingCitations: [], notice: null, logTail: null }
     printCheck({ ok: true, data: { ...base, status: 'passed' } }, true)
     expect(process.exitCode).toBe(undefined)
     printCheck({ ok: true, data: { ...base, status: 'skipped', notice: 'latexmk not found' } }, true)

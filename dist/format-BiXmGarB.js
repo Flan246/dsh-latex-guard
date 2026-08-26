@@ -251,6 +251,22 @@ function citeAudit(texSources, bibText) {
 
 //#endregion
 //#region src/core/check.ts
+function detectEngine(tex) {
+	const magic = /^%+\s*!\s*TeX\s+program\s*=\s*(\S+)/im.exec(tex);
+	if (magic) {
+		const p = magic[1].toLowerCase();
+		if (p.includes("xetex") || p.includes("xelatex")) return "xelatex";
+		if (p.includes("luatex") || p.includes("lualatex")) return "lualatex";
+	}
+	if (/\\RequireXeTeX|xeCJK|\{ctex/.test(tex)) return "xelatex";
+	if (/\\RequireLuaTeX/.test(tex)) return "lualatex";
+	return "pdflatex";
+}
+const ENGINE_FLAG = {
+	pdflatex: "-pdf",
+	xelatex: "-xelatex",
+	lualatex: "-lualatex"
+};
 function parseLog(log) {
 	const errors = [];
 	const warnings = [];
@@ -273,6 +289,18 @@ function parseLog(log) {
 			});
 			const c = /Citation '([^']+)'/.exec(l);
 			if (c) missing.add(c[1]);
+		} else if (/^\s*\* /.test(l)) {
+			const block = [];
+			while (i < lines.length && /^\s*\* /.test(lines[i])) {
+				block.push(lines[i].replace(/^\s*\* /, "").trim());
+				i++;
+			}
+			const text = block.join(" ");
+			if (/sorry!/i.test(text) || /required/i.test(text)) errors.push({
+				line: null,
+				message: text,
+				file: null
+			});
 		}
 	}
 	return {
@@ -280,6 +308,10 @@ function parseLog(log) {
 		warnings,
 		missingCitations: [...missing].sort()
 	};
+}
+function logTailOf(log) {
+	const tail = log.split("\n").slice(-30).map((l) => l.replace(/\r$/, "")).join("\n");
+	return tail.length > 2e3 ? tail.slice(-2e3) : tail;
 }
 const defaultWhich = (cmd) => new Promise((resolve) => {
 	execFile(process.platform === "win32" ? "where" : "which", [cmd], (e) => resolve(!e));
@@ -308,6 +340,17 @@ async function checkLatex(projectDir, entry, deps = {}) {
 	} catch {
 		return err("NOT_FOUND", `entry not found: ${entryPath}`);
 	}
+	let engine;
+	if (deps.engine && deps.engine !== "auto") engine = deps.engine;
+	else {
+		engine = detectEngine(tex);
+		if (engine === "pdflatex") {
+			const cls = /\\documentclass(?:\[[^\]]*\])?\{([^}/.]+)\}/.exec(tex);
+			if (cls) try {
+				engine = detectEngine(await read(join(projectDir, `${cls[1]}.cls`)));
+			} catch {}
+		}
+	}
 	if (!await which("latexmk")) {
 		let missingCitations = [];
 		try {
@@ -316,10 +359,12 @@ async function checkLatex(projectDir, entry, deps = {}) {
 		} catch {}
 		return ok({
 			status: "skipped",
+			engine,
 			errors: [],
 			warnings: [],
 			missingCitations,
-			notice: "latexmk not found on PATH; compile check skipped. Only cite audit was performed."
+			notice: "latexmk not found on PATH; compile check skipped. Only cite audit was performed.",
+			logTail: null
 		});
 	}
 	let code;
@@ -327,17 +372,20 @@ async function checkLatex(projectDir, entry, deps = {}) {
 	try {
 		({code, log} = await run("latexmk", [
 			"-interaction=nonstopmode",
-			"-pdf",
+			ENGINE_FLAG[engine],
 			entry
 		], projectDir));
 	} catch (e) {
 		return err("LATEXMK_FAILED", e instanceof Error ? e.message : String(e));
 	}
 	const parsed = parseLog(log);
+	const status = code === 0 && parsed.errors.length === 0 ? "passed" : "failed";
 	return ok({
-		status: code === 0 && parsed.errors.length === 0 ? "passed" : "failed",
+		status,
+		engine,
 		...parsed,
-		notice: null
+		notice: null,
+		logTail: status === "failed" && parsed.errors.length === 0 ? logTailOf(log) : null
 	});
 }
 
@@ -348,11 +396,12 @@ function formatIssues(issues) {
 	return issues.map((i) => `[${i.kind}] ${i.key}: ${i.detail}`).join("\n");
 }
 function formatReport(r) {
-	const lines = [`status: ${r.status}`];
+	const lines = [`status: ${r.status}`, `engine: ${r.engine}`];
 	if (r.notice) lines.push(`notice: ${r.notice}`);
 	for (const e of r.errors) lines.push(`ERROR${e.line ? ` (line ${e.line})` : ""}: ${e.message}`);
 	for (const w of r.warnings) lines.push(`warn: ${w.message}`);
 	if (r.missingCitations.length) lines.push(`missing citations: ${r.missingCitations.join(", ")}`);
+	if (r.logTail) lines.push(`--- log tail ---\n${r.logTail}`);
 	return lines.join("\n");
 }
 

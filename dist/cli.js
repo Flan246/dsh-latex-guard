@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-CiZyWdTT.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-BiXmGarB.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Command } from "commander";
@@ -24,8 +24,19 @@ async function guardedWriteBib(path, original, fixed) {
 }
 const program = new Command();
 program.name("dsh-latex-guard").description("LaTeX compile check and BibTeX lint/fill/audit tools").option("--json", "print machine-readable JSON", false);
-program.command("check").argument("<dir>").argument("<entry>").action(async (dir, entry) => {
-	printCheck(await checkLatex(dir, entry), program.opts().json);
+const ENGINES = [
+	"auto",
+	"pdflatex",
+	"xelatex",
+	"lualatex"
+];
+program.command("check").argument("<dir>").argument("<entry>").option("--engine <name>", "latexmk engine: auto | pdflatex | xelatex | lualatex (default auto)", "auto").action(async (dir, entry, o) => {
+	if (!ENGINES.includes(o.engine)) {
+		console.error(`error[INVALID_ENGINE]: --engine must be one of ${ENGINES.join(", ")} (got "${o.engine}")`);
+		process.exitCode = 2;
+		return;
+	}
+	printCheck(await checkLatex(dir, entry, { engine: o.engine }), program.opts().json);
 });
 program.command("bib-lint").argument("<bib>").option("--write", "write fixed bib back", false).action(async (bib, o) => {
 	let text;

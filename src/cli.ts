@@ -44,9 +44,18 @@ const program = new Command()
 program.name('dsh-latex-guard').description('LaTeX compile check and BibTeX lint/fill/audit tools')
   .option('--json', 'print machine-readable JSON', false)
 
+const ENGINES = ['auto', 'pdflatex', 'xelatex', 'lualatex'] as const
+
 program.command('check').argument('<dir>').argument('<entry>')
-  .action(async (dir: string, entry: string) => {
-    printCheck(await checkLatex(dir, entry), program.opts().json)
+  .option('--engine <name>', 'latexmk engine: auto | pdflatex | xelatex | lualatex (default auto)', 'auto')
+  .action(async (dir: string, entry: string, o: { engine: string }) => {
+    if (!(ENGINES as readonly string[]).includes(o.engine)) {
+      console.error(`error[INVALID_ENGINE]: --engine must be one of ${ENGINES.join(', ')} (got "${o.engine}")`)
+      process.exitCode = 2
+      return
+    }
+    printCheck(await checkLatex(dir, entry, { engine: o.engine as (typeof ENGINES)[number] }),
+      program.opts().json)
   })
 
 program.command('bib-lint').argument('<bib>').option('--write', 'write fixed bib back', false)
