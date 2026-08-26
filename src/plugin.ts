@@ -59,6 +59,17 @@ export function apply(ctx: Context) {
       render: (_args, v: any) => [{ type: 'text', text: v?.error ? `Check failed: ${v.error.message}` : formatReport(v) }],
     },
     async execute(args) {
+      // Same validation as the CLI's --engine: reject unknown engine names
+      // instead of silently treating them as auto-detect.
+      const ENGINES = ['auto', 'pdflatex', 'xelatex', 'lualatex']
+      if (args.engine !== undefined && !ENGINES.includes(args.engine)) {
+        return {
+          error: {
+            code: 'INVALID_ENGINE',
+            message: `engine must be one of ${ENGINES.join(', ')} (got "${args.engine}")`,
+          },
+        }
+      }
       return asValue(await checkLatex(args.dir, args.entry,
         args.engine ? { engine: args.engine as 'auto' | Engine } : {}))
     },

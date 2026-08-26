@@ -47,7 +47,7 @@ describe('printCheck exit code', () => {
   })
 
   it('keeps exit code 0 for passed and skipped (graceful degradation)', () => {
-    const base = { engine: 'pdflatex', errors: [], warnings: [], missingCitations: [], notice: null, logTail: null }
+    const base = { engine: 'pdflatex' as const, errors: [], warnings: [], missingCitations: [], notice: null, logTail: null }
     printCheck({ ok: true, data: { ...base, status: 'passed' } }, true)
     expect(process.exitCode).toBe(undefined)
     printCheck({ ok: true, data: { ...base, status: 'skipped', notice: 'latexmk not found' } }, true)

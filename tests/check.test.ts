@@ -93,6 +93,20 @@ describe('engine detection', () => {
     expect(run.mock.calls[0]![1]).toContain('-xelatex')
   })
 
+  it('falls back to pdflatex when the local class file is unreadable', async () => {
+    const run = vi.fn(async (_cmd: string, _args: string[], _cwd: string) => ({ code: 0, log: '' }))
+    const r = await checkLatex('/p', 'paper.tex', {
+      which: async () => true,
+      run,
+      readFile: async (p: string) => {
+        if (p.endsWith('.cls')) throw new Error('ENOENT')
+        return '\\documentclass{cumcmthesis}'
+      },
+    })
+    expect(r.ok).toBe(true)
+    expect(run.mock.calls[0]![1]).toContain('-pdf')
+  })
+
   it('explicit engine overrides detection', async () => {
     expect(await runArgs('\\RequireXeTeX', 'pdflatex')).toContain('-pdf')
     expect(await runArgs('\\documentclass{article}', 'xelatex')).toContain('-xelatex')
@@ -162,7 +176,7 @@ describe('logTail', () => {
 describe('formatReport engine and logTail', () => {
   const base = {
     errors: [], warnings: [], missingCitations: [], notice: null,
-    engine: 'xelatex', logTail: null,
+    engine: 'xelatex' as const, logTail: null,
   }
 
   it('shows the engine line after the status', () => {

@@ -5,9 +5,10 @@ import { citeAudit } from './cite-audit.js'
 import { err, ok, type Result } from './types.js'
 
 export interface LogIssue { line: number | null; message: string; file: string | null }
+export type Engine = 'pdflatex' | 'xelatex' | 'lualatex'
 export interface CheckReport {
   status: 'passed' | 'failed' | 'skipped'
-  engine: string
+  engine: Engine
   errors: LogIssue[]
   warnings: LogIssue[]
   missingCitations: string[]
@@ -15,8 +16,6 @@ export interface CheckReport {
   logTail: string | null
 }
 export type Runner = (cmd: string, args: string[], cwd: string) => Promise<{ code: number; log: string }>
-
-export type Engine = 'pdflatex' | 'xelatex' | 'lualatex'
 
 interface Deps {
   engine?: 'auto' | Engine

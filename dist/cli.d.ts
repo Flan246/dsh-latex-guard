@@ -17,9 +17,10 @@ interface LogIssue {
   message: string;
   file: string | null;
 }
+type Engine = 'pdflatex' | 'xelatex' | 'lualatex';
 interface CheckReport {
   status: 'passed' | 'failed' | 'skipped';
-  engine: string;
+  engine: Engine;
   errors: LogIssue[];
   warnings: LogIssue[];
   missingCitations: string[];

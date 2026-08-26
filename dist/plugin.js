@@ -76,6 +76,16 @@ function apply(ctx) {
 			}]
 		},
 		async execute(args) {
+			const ENGINES = [
+				"auto",
+				"pdflatex",
+				"xelatex",
+				"lualatex"
+			];
+			if (args.engine !== void 0 && !ENGINES.includes(args.engine)) return { error: {
+				code: "INVALID_ENGINE",
+				message: `engine must be one of ${ENGINES.join(", ")} (got "${args.engine}")`
+			} };
 			return asValue(await checkLatex(args.dir, args.entry, args.engine ? { engine: args.engine } : {}));
 		}
 	}));
