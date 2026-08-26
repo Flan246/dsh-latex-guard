@@ -12,6 +12,7 @@ describe('parseLog', () => {
   it('extracts errors, warnings and undefined citations', () => {
     const r = parseLog(LOG)
     expect(r.errors[0]?.message).toContain('Undefined control sequence')
+    expect(r.errors[0]?.line).toBe(12)
     expect(r.warnings).toHaveLength(2)
     expect(r.missingCitations).toEqual(['ghost2023'])
   })

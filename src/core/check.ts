@@ -47,7 +47,7 @@ const defaultRun: Runner = (cmd, args, cwd) => new Promise((resolve, reject) => 
   execFile(cmd, args, { cwd, timeout: 120_000, maxBuffer: 16 * 1024 * 1024 },
     (e, stdout, stderr) => {
       if (e && (e as any).killed) return reject(new Error('latexmk timed out'))
-      resolve({ code: typeof e?.code === 'number' ? e.code : 0, log: stdout + stderr })
+      resolve({ code: typeof e?.code === 'number' ? e.code : 1, log: stdout + stderr })
     })
 })
 
@@ -83,7 +83,13 @@ export async function checkLatex(
     })
   }
 
-  const { code, log } = await run('latexmk', ['-interaction=nonstopmode', '-pdf', entry], projectDir)
+  let code: number
+  let log: string
+  try {
+    ;({ code, log } = await run('latexmk', ['-interaction=nonstopmode', '-pdf', entry], projectDir))
+  } catch (e) {
+    return err('LATEXMK_FAILED', e instanceof Error ? e.message : String(e))
+  }
   const parsed = parseLog(log)
   return ok({
     status: code === 0 && parsed.errors.length === 0 ? 'passed' : 'failed',
