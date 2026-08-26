@@ -162,9 +162,24 @@ const CACHE_TTL_MS = 300 * 1e3;
 const CACHE_MAX = 200;
 const CACHE_EVICT_BATCH = 20;
 const cache = /* @__PURE__ */ new Map();
+let cachedProxy = null;
 function proxyDispatcher() {
 	const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
-	return proxy ? new ProxyAgent(proxy) : void 0;
+	if (!proxy) {
+		if (cachedProxy) {
+			cachedProxy.agent.close();
+			cachedProxy = null;
+		}
+		return;
+	}
+	if (cachedProxy?.url !== proxy) {
+		if (cachedProxy) cachedProxy.agent.close();
+		cachedProxy = {
+			url: proxy,
+			agent: new ProxyAgent(proxy)
+		};
+	}
+	return cachedProxy.agent;
 }
 let sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function retryAfterMs(res) {
@@ -205,6 +220,9 @@ async function fetchJson(url) {
 	for (let attempt = 0; attempt < 2; attempt++) try {
 		let res = await request(url);
 		if (res.status === 429) {
+			try {
+				await res.body?.dump();
+			} catch {}
 			await sleep(retryAfterMs(res));
 			res = await request(url);
 			if (res.status === 429) return err("RATE_LIMITED", `429: ${url}`);

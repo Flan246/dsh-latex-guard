@@ -13,10 +13,23 @@ export function clearHttpCache(): void {
   cache.clear()
 }
 
+let cachedProxy: { url: string; agent: ProxyAgent } | null = null
+
 function proxyDispatcher(): ProxyAgent | undefined {
   const proxy =
     process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy
-  return proxy ? new ProxyAgent(proxy) : undefined
+  if (!proxy) {
+    if (cachedProxy) {
+      void cachedProxy.agent.close()
+      cachedProxy = null
+    }
+    return undefined
+  }
+  if (cachedProxy?.url !== proxy) {
+    if (cachedProxy) void cachedProxy.agent.close()
+    cachedProxy = { url: proxy, agent: new ProxyAgent(proxy) }
+  }
+  return cachedProxy.agent
 }
 
 // Injectable so tests can substitute or spy without real waiting.
@@ -58,6 +71,8 @@ export async function fetchJson(url: string): Promise<Result<unknown>> {
     try {
       let res = await request(url)
       if (res.status === 429) {
+        // Drain the body so undici can reuse the connection; failure must not block the retry.
+        try { await (res.body as unknown as { dump(): Promise<unknown> } | null)?.dump() } catch { /* ignore */ }
         await sleep(retryAfterMs(res))
         res = await request(url)
         if (res.status === 429) return err('RATE_LIMITED', `429: ${url}`)
