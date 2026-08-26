@@ -42,6 +42,7 @@ function parseFields(body: string): Record<string, string> {
     let value = ''
     if (body[i] === '{') {
       const close = matchBrace(body, i)
+      if (close === -1) break
       value = body.slice(i + 1, close)
       i = close + 1
     } else if (body[i] === '"') {
