@@ -20,7 +20,7 @@ interface CheckReport {
   notice: string | null;
 }
 //#endregion
-//#region src/cli.d.ts
+//#region src/core/format.d.ts
 declare function formatIssues(issues: LintIssue[]): string;
 declare function formatReport(r: CheckReport): string;
 //#endregion
