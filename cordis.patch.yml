@@ -1,0 +1,3 @@
+- insert:
+    - id: latex-guard
+      name: dsh-latex-guard
