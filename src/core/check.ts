@@ -43,11 +43,11 @@ const defaultWhich: Deps['which'] = (cmd) => new Promise((resolve) => {
   execFile(process.platform === 'win32' ? 'where' : 'which', [cmd], (e) => resolve(!e))
 })
 
-const defaultRun: Runner = (cmd, args, cwd) => new Promise((resolve, reject) => {
+export const defaultRun: Runner = (cmd, args, cwd) => new Promise((resolve, reject) => {
   execFile(cmd, args, { cwd, timeout: 120_000, maxBuffer: 16 * 1024 * 1024 },
     (e, stdout, stderr) => {
       if (e && (e as any).killed) return reject(new Error('latexmk timed out'))
-      resolve({ code: typeof e?.code === 'number' ? e.code : 1, log: stdout + stderr })
+      resolve({ code: e ? (typeof e.code === 'number' ? e.code : 1) : 0, log: stdout + stderr })
     })
 })
 

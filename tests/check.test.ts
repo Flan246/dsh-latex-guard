@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { checkLatex, parseLog } from '../src/core/check.js'
+import { checkLatex, defaultRun, parseLog } from '../src/core/check.js'
 
 const LOG = `./main.tex:12: Undefined control sequence.
 ! Undefined control sequence.
@@ -39,5 +39,17 @@ describe('checkLatex', () => {
     })
     expect(r.ok && r.data.status).toBe('failed')
     expect(r.ok && r.data.errors.length).toBeGreaterThan(0)
+  })
+})
+
+describe('defaultRun', () => {
+  it('resolves code 0 on success', async () => {
+    const r = await defaultRun(process.execPath, ['-e', 'process.exit(0)'], process.cwd())
+    expect(r.code).toBe(0)
+  })
+
+  it('resolves the child exit code on failure', async () => {
+    const r = await defaultRun(process.execPath, ['-e', 'process.exit(3)'], process.cwd())
+    expect(r.code).toBe(3)
   })
 })

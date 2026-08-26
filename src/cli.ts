@@ -6,7 +6,7 @@ import { lintBib, type LintIssue } from './core/bib-lint.js'
 import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
 import { checkLatex, type CheckReport } from './core/check.js'
-import type { Result } from './core/types.js'
+import { err, type Result } from './core/types.js'
 
 export function formatIssues(issues: LintIssue[]): string {
   if (issues.length === 0) return 'No issues found.'
@@ -42,7 +42,13 @@ program.command('check').argument('<dir>').argument('<entry>')
 
 program.command('bib-lint').argument('<bib>').option('--write', 'write fixed bib back', false)
   .action(async (bib: string, o: { write: boolean }) => {
-    const text = await readFile(bib, 'utf8')
+    let text: string
+    try {
+      text = await readFile(bib, 'utf8')
+    } catch {
+      print(err('NOT_FOUND', `file not found: ${bib}`), program.opts().json, () => '')
+      return
+    }
     const { issues, fixed } = lintBib(text)
     if (o.write) await writeFile(bib, fixed)
     print({ ok: true as const, data: { issues, fixed: o.write ? '(written back)' : fixed } },
@@ -51,7 +57,13 @@ program.command('bib-lint').argument('<bib>').option('--write', 'write fixed bib
 
 program.command('bib-fill').argument('<bib>').option('--write', 'write fixed bib back', false)
   .action(async (bib: string, o: { write: boolean }) => {
-    const text = await readFile(bib, 'utf8')
+    let text: string
+    try {
+      text = await readFile(bib, 'utf8')
+    } catch {
+      print(err('NOT_FOUND', `file not found: ${bib}`), program.opts().json, () => '')
+      return
+    }
     const r = await fillBib(text)
     if (r.ok && o.write) await writeFile(bib, r.data.fixed)
     print(r, program.opts().json,
@@ -60,8 +72,16 @@ program.command('bib-fill').argument('<bib>').option('--write', 'write fixed bib
 
 program.command('cite-audit').argument('<bib>').argument('<tex...>')
   .action(async (bib: string, texs: string[]) => {
-    const bibText = await readFile(bib, 'utf8')
-    const sources = await Promise.all(texs.map((t) => readFile(t, 'utf8')))
+    let bibText: string
+    let sources: string[]
+    try {
+      bibText = await readFile(bib, 'utf8')
+      sources = await Promise.all(texs.map((t) => readFile(t, 'utf8')))
+    } catch {
+      print(err('NOT_FOUND', `file not found: ${bib} or one of the tex sources`),
+        program.opts().json, () => '')
+      return
+    }
     print({ ok: true as const, data: citeAudit(sources, bibText) }, program.opts().json,
       (d) => `missing in bib: ${d.missingInBib.join(', ') || '-'}\nuncited entries: ${d.uncited.join(', ') || '-'}`)
   })

@@ -292,7 +292,7 @@ const defaultRun = (cmd, args, cwd) => new Promise((resolve, reject) => {
 	}, (e, stdout, stderr) => {
 		if (e && e.killed) return reject(/* @__PURE__ */ new Error("latexmk timed out"));
 		resolve({
-			code: typeof e?.code === "number" ? e.code : 1,
+			code: e ? typeof e.code === "number" ? e.code : 1 : 0,
 			log: stdout + stderr
 		});
 	});
@@ -369,7 +369,14 @@ program.command("check").argument("<dir>").argument("<entry>").action(async (dir
 	print(await checkLatex(dir, entry), program.opts().json, formatReport);
 });
 program.command("bib-lint").argument("<bib>").option("--write", "write fixed bib back", false).action(async (bib, o) => {
-	const { issues, fixed } = lintBib(await readFile(bib, "utf8"));
+	let text;
+	try {
+		text = await readFile(bib, "utf8");
+	} catch {
+		print(err("NOT_FOUND", `file not found: ${bib}`), program.opts().json, () => "");
+		return;
+	}
+	const { issues, fixed } = lintBib(text);
 	if (o.write) await writeFile(bib, fixed);
 	print({
 		ok: true,
@@ -380,15 +387,30 @@ program.command("bib-lint").argument("<bib>").option("--write", "write fixed bib
 	}, program.opts().json, (d) => formatIssues(d.issues));
 });
 program.command("bib-fill").argument("<bib>").option("--write", "write fixed bib back", false).action(async (bib, o) => {
-	const r = await fillBib(await readFile(bib, "utf8"));
+	let text;
+	try {
+		text = await readFile(bib, "utf8");
+	} catch {
+		print(err("NOT_FOUND", `file not found: ${bib}`), program.opts().json, () => "");
+		return;
+	}
+	const r = await fillBib(text);
 	if (r.ok && o.write) await writeFile(bib, r.data.fixed);
 	print(r, program.opts().json, (d) => `filled: ${d.filled.join(", ") || "-"}\nmissing: ${d.missing.join(", ") || "-"}`);
 });
 program.command("cite-audit").argument("<bib>").argument("<tex...>").action(async (bib, texs) => {
-	const bibText = await readFile(bib, "utf8");
+	let bibText;
+	let sources;
+	try {
+		bibText = await readFile(bib, "utf8");
+		sources = await Promise.all(texs.map((t) => readFile(t, "utf8")));
+	} catch {
+		print(err("NOT_FOUND", `file not found: ${bib} or one of the tex sources`), program.opts().json, () => "");
+		return;
+	}
 	print({
 		ok: true,
-		data: citeAudit(await Promise.all(texs.map((t) => readFile(t, "utf8"))), bibText)
+		data: citeAudit(sources, bibText)
 	}, program.opts().json, (d) => `missing in bib: ${d.missingInBib.join(", ") || "-"}\nuncited entries: ${d.uncited.join(", ") || "-"}`);
 });
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) program.parseAsync();
