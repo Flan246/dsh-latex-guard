@@ -9,7 +9,7 @@ LaTeX compile check and BibTeX lint/fill/audit tools for DeepSeek Harness and an
 - **bib-fill** — fill missing entry fields from Crossref by DOI or title (never overwrites existing values)
 - **cite-audit** — compare `\cite` keys in `.tex` files against a `.bib` file: cited-but-missing and never-cited entries
 
-All commands return human-readable output by default and structured JSON with `--json`. Exit codes: 0 success, 1 business error, 2 usage error.
+All commands return human-readable output by default and structured JSON with `--json`. Exit codes: 0 success, 1 business error, 2 usage error. A `check` that compiles but reports `status: "failed"` also exits 1; a `skipped` check (latexmk unavailable) exits 0, since graceful degradation is not an error.
 
 ## Usage
 
@@ -30,7 +30,12 @@ npx dsh-latex-guard bib-fill <file.bib> [--write]
 npx dsh-latex-guard cite-audit <file.bib> <tex...>
 ```
 
-`--write` modifies the bib in place — confirm before using it.
+`--write` modifies the bib in place — confirm before using it. As a safety net, both write paths refuse to write when the bib cannot be fully parsed (e.g. an entry missing its closing brace), instead of silently dropping the unparseable tail.
+
+## Known limitations
+
+- `cite-audit` counts `\cite` keys inside commented-out (`% ...`) lines as real citations.
+- A `passed` check report may still carry citation warnings emitted by latexmk's intermediate passes; only the final pass reflects the true citation state.
 
 ### 3. As an agent skill
 

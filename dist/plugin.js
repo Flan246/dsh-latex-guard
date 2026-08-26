@@ -1,4 +1,4 @@
-import { a as fillBib, i as citeAudit, n as formatReport, r as checkLatex, s as lintBib, t as formatIssues } from "./format-DkT8wG58.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-CiZyWdTT.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
@@ -38,6 +38,12 @@ async function writeOrError(path, content) {
 			}
 		};
 	}
+}
+function parseIncompleteError(path) {
+	return {
+		code: "PARSE_INCOMPLETE",
+		message: `refusing to write ${path}: the bib is not fully parseable (an entry is probably missing its closing brace); writing back would drop content. Fix the entry first.`
+	};
 }
 function apply(ctx) {
 	ctx.tools.register(defineTool({
@@ -98,6 +104,7 @@ function apply(ctx) {
 			if (!r.ok) return { error: r.error };
 			const { issues, fixed } = lintBib(r.data);
 			if (args.write) {
+				if (!isFullyParsed(r.data)) return { error: parseIncompleteError(args.path) };
 				const w = await writeOrError(args.path, fixed);
 				if (!w.ok) return { error: w.error };
 			}
@@ -137,6 +144,7 @@ function apply(ctx) {
 			const filled = await fillBib(r.data);
 			if (!filled.ok) return { error: filled.error };
 			if (args.write) {
+				if (!isFullyParsed(r.data)) return { error: parseIncompleteError(args.path) };
 				const w = await writeOrError(args.path, filled.data.fixed);
 				if (!w.ok) return { error: w.error };
 			}

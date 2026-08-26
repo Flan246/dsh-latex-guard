@@ -3,14 +3,21 @@
   "version": "0.1.0",
   "description": "LaTeX compile check and BibTeX lint/fill/audit tools for DeepSeek Harness and any agent.",
   "type": "module",
+  "license": "MIT",
   "main": "./dist/plugin.js",
+  "types": "./dist/plugin.d.ts",
   "bin": { "dsh-latex-guard": "./dist/cli.js" },
   "files": ["dist", "cordis.patch.yml", "skill", "README.md"],
   "engines": { "node": ">=20" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FSMargoo/dsh-latex-guard.git"
+  },
+  "keywords": ["deepseek-harness", "dsh-plugin", "latex", "bibtex", "lint", "crossref"],
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
-    "prepack": "pnpm run build"
+    "prepack": "tsdown"
   },
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "peerDependencies": {

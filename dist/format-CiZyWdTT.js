@@ -67,6 +67,9 @@ function parseFields(body) {
 	}
 	return fields;
 }
+function isFullyParsed(text) {
+	return (text.match(/@[a-zA-Z]+\s*\{/g)?.length ?? 0) <= parseBib(text).length;
+}
 function formatBib(entries) {
 	return entries.map((e) => {
 		const lines = Object.entries(e.fields).map(([k, v]) => `  ${k} = {${v}}`);
@@ -354,4 +357,4 @@ function formatReport(r) {
 }
 
 //#endregion
-export { fillBib as a, citeAudit as i, formatReport as n, err as o, checkLatex as r, lintBib as s, formatIssues as t };
+export { fillBib as a, lintBib as c, citeAudit as i, isFullyParsed as l, formatReport as n, err as o, checkLatex as r, ok as s, formatIssues as t };

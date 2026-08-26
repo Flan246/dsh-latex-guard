@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile as fsWriteFile, chmod } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile as fsWriteFile, chmod } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -100,6 +100,24 @@ describe('plugin write error handling', () => {
     } finally {
       await chmod(p, 0o644)
     }
+  })
+
+  it('bib_lint refuses to write an incompletely parsed bib', async () => {
+    const truncated = '@article{a,\n  author = {A},\n  year = {2020},\n}\n\n@book{b,\n  title = {Boo'
+    const p = join(dir, 'refs.bib')
+    await fsWriteFile(p, truncated, 'utf8')
+    const r = await tools.bib_lint.execute({ path: p, write: true })
+    expect(r.error.code).toBe('PARSE_INCOMPLETE')
+    expect(await readFile(p, 'utf8')).toBe(truncated)
+  })
+
+  it('bib_fill refuses to write an incompletely parsed bib', async () => {
+    const truncated = '@misc{a, note={x}}\n\n@book{b,\n  title = {Boo'
+    const p = join(dir, 'refs.bib')
+    await fsWriteFile(p, truncated, 'utf8')
+    const r = await tools.bib_fill.execute({ path: p, write: true })
+    expect(r.error.code).toBe('PARSE_INCOMPLETE')
+    expect(await readFile(p, 'utf8')).toBe(truncated)
   })
 })
 

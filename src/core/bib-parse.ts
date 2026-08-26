@@ -61,6 +61,22 @@ function parseFields(body: string): Record<string, string> {
   return fields
 }
 
+// Heuristic completeness guard for --write paths. parseBib stops at the
+// first entry whose braces never close (matchBrace === -1 → break), silently
+// dropping that entry and everything after it; formatBib then only re-emits
+// the parsed prefix, so writing the result back would truncate the file.
+// We count raw `@type{` markers and refuse to write when there are more
+// markers than parsed entries.
+// Boundary: markers inside field values or comment lines are counted too,
+// while parseBib skips content already consumed inside an entry — so a
+// well-formed file containing a literal `@foo{` inside an entry body can
+// trip a false positive. That direction is safe: the guard only ever
+// refuses a write, it never corrupts data.
+export function isFullyParsed(text: string): boolean {
+  const markers = text.match(/@[a-zA-Z]+\s*\{/g)?.length ?? 0
+  return markers <= parseBib(text).length
+}
+
 export function formatBib(entries: BibEntry[]): string {
   return entries.map((e) => {
     const lines = Object.entries(e.fields).map(([k, v]) => `  ${k} = {${v}}`)

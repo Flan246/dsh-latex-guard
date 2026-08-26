@@ -5,9 +5,10 @@ import { Command } from 'commander'
 import { lintBib } from './core/bib-lint.js'
 import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
-import { checkLatex } from './core/check.js'
+import { checkLatex, type CheckReport } from './core/check.js'
+import { isFullyParsed } from './core/bib-parse.js'
 import { formatIssues, formatReport } from './core/format.js'
-import { err, type Result } from './core/types.js'
+import { err, ok, type Result } from './core/types.js'
 
 export { formatIssues, formatReport }
 
@@ -20,13 +21,32 @@ function print<T>(r: Result<T>, asJson: boolean, render: (d: T) => string): void
   console.log(asJson ? JSON.stringify(r.data, null, 2) : render(r.data))
 }
 
+// A failed compile is a business error: exit 1 per the README contract.
+// `skipped` (latexmk absent) stays exit 0 — graceful degradation is not an error.
+export function printCheck(r: Result<CheckReport>, asJson: boolean): void {
+  print(r, asJson, formatReport)
+  if (r.ok && r.data.status === 'failed') process.exitCode = 1
+}
+
+// Refuse to write back when the bib could not be fully parsed (see
+// isFullyParsed) — otherwise the reformatted prefix would silently drop
+// everything after the first unclosed entry.
+export async function guardedWriteBib(path: string, original: string, fixed: string): Promise<Result<null>> {
+  if (!isFullyParsed(original)) {
+    return err('PARSE_INCOMPLETE',
+      `refusing to write ${path}: the bib is not fully parseable (an entry is probably missing its closing brace); writing back would drop content. Fix the entry first.`)
+  }
+  await writeFile(path, fixed)
+  return ok(null)
+}
+
 const program = new Command()
 program.name('dsh-latex-guard').description('LaTeX compile check and BibTeX lint/fill/audit tools')
   .option('--json', 'print machine-readable JSON', false)
 
 program.command('check').argument('<dir>').argument('<entry>')
   .action(async (dir: string, entry: string) => {
-    print(await checkLatex(dir, entry), program.opts().json, formatReport)
+    printCheck(await checkLatex(dir, entry), program.opts().json)
   })
 
 program.command('bib-lint').argument('<bib>').option('--write', 'write fixed bib back', false)
@@ -39,7 +59,10 @@ program.command('bib-lint').argument('<bib>').option('--write', 'write fixed bib
       return
     }
     const { issues, fixed } = lintBib(text)
-    if (o.write) await writeFile(bib, fixed)
+    if (o.write) {
+      const w = await guardedWriteBib(bib, text, fixed)
+      if (!w.ok) { print(w, program.opts().json, () => ''); return }
+    }
     print({ ok: true as const, data: { issues, fixed: o.write ? '(written back)' : fixed } },
       program.opts().json, (d) => formatIssues(d.issues))
   })
@@ -54,7 +77,10 @@ program.command('bib-fill').argument('<bib>').option('--write', 'write fixed bib
       return
     }
     const r = await fillBib(text)
-    if (r.ok && o.write) await writeFile(bib, r.data.fixed)
+    if (r.ok && o.write) {
+      const w = await guardedWriteBib(bib, text, r.data.fixed)
+      if (!w.ok) { print(w, program.opts().json, () => ''); return }
+    }
     print(r, program.opts().json,
       (d) => `filled: ${d.filled.join(', ') || '-'}\nmissing: ${d.missing.join(', ') || '-'}`)
   })

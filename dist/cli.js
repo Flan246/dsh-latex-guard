@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { a as fillBib, i as citeAudit, n as formatReport, o as err, r as checkLatex, s as lintBib, t as formatIssues } from "./format-DkT8wG58.js";
+import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-CiZyWdTT.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Command } from "commander";
@@ -13,10 +13,19 @@ function print(r, asJson, render) {
 	}
 	console.log(asJson ? JSON.stringify(r.data, null, 2) : render(r.data));
 }
+function printCheck(r, asJson) {
+	print(r, asJson, formatReport);
+	if (r.ok && r.data.status === "failed") process.exitCode = 1;
+}
+async function guardedWriteBib(path, original, fixed) {
+	if (!isFullyParsed(original)) return err("PARSE_INCOMPLETE", `refusing to write ${path}: the bib is not fully parseable (an entry is probably missing its closing brace); writing back would drop content. Fix the entry first.`);
+	await writeFile(path, fixed);
+	return ok(null);
+}
 const program = new Command();
 program.name("dsh-latex-guard").description("LaTeX compile check and BibTeX lint/fill/audit tools").option("--json", "print machine-readable JSON", false);
 program.command("check").argument("<dir>").argument("<entry>").action(async (dir, entry) => {
-	print(await checkLatex(dir, entry), program.opts().json, formatReport);
+	printCheck(await checkLatex(dir, entry), program.opts().json);
 });
 program.command("bib-lint").argument("<bib>").option("--write", "write fixed bib back", false).action(async (bib, o) => {
 	let text;
@@ -27,7 +36,13 @@ program.command("bib-lint").argument("<bib>").option("--write", "write fixed bib
 		return;
 	}
 	const { issues, fixed } = lintBib(text);
-	if (o.write) await writeFile(bib, fixed);
+	if (o.write) {
+		const w = await guardedWriteBib(bib, text, fixed);
+		if (!w.ok) {
+			print(w, program.opts().json, () => "");
+			return;
+		}
+	}
 	print({
 		ok: true,
 		data: {
@@ -45,7 +60,13 @@ program.command("bib-fill").argument("<bib>").option("--write", "write fixed bib
 		return;
 	}
 	const r = await fillBib(text);
-	if (r.ok && o.write) await writeFile(bib, r.data.fixed);
+	if (r.ok && o.write) {
+		const w = await guardedWriteBib(bib, text, r.data.fixed);
+		if (!w.ok) {
+			print(w, program.opts().json, () => "");
+			return;
+		}
+	}
 	print(r, program.opts().json, (d) => `filled: ${d.filled.join(", ") || "-"}\nmissing: ${d.missing.join(", ") || "-"}`);
 });
 program.command("cite-audit").argument("<bib>").argument("<tex...>").action(async (bib, texs) => {
@@ -66,4 +87,4 @@ program.command("cite-audit").argument("<bib>").argument("<tex...>").action(asyn
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) program.parseAsync();
 
 //#endregion
-export { formatIssues, formatReport };
+export { formatIssues, formatReport, guardedWriteBib, printCheck };

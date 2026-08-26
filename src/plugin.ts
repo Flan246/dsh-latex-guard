@@ -5,6 +5,7 @@ import { lintBib } from './core/bib-lint.js'
 import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
 import { checkLatex } from './core/check.js'
+import { isFullyParsed } from './core/bib-parse.js'
 import { formatIssues, formatReport } from './core/format.js'
 import type { Result } from './core/types.js'
 
@@ -31,6 +32,16 @@ async function writeOrError(path: string, content: string): Promise<Result<null>
     return { ok: true, data: null }
   } catch (e) {
     return { ok: false, error: { code: 'WRITE_FAILED', message: `write failed: ${path}: ${(e as Error).message}` } }
+  }
+}
+
+// Same guard as the CLI's guardedWriteBib: never write back a reformatted bib
+// when the original could not be fully parsed, or content after the first
+// unclosed entry would be silently dropped. See isFullyParsed in bib-parse.
+function parseIncompleteError(path: string) {
+  return {
+    code: 'PARSE_INCOMPLETE',
+    message: `refusing to write ${path}: the bib is not fully parseable (an entry is probably missing its closing brace); writing back would drop content. Fix the entry first.`,
   }
 }
 
@@ -67,6 +78,7 @@ export function apply(ctx: Context) {
       if (!r.ok) return { error: r.error }
       const { issues, fixed } = lintBib(r.data)
       if (args.write) {
+        if (!isFullyParsed(r.data)) return { error: parseIncompleteError(args.path) }
         const w = await writeOrError(args.path, fixed)
         if (!w.ok) return { error: w.error }
       }
@@ -92,6 +104,7 @@ export function apply(ctx: Context) {
       const filled = await fillBib(r.data)
       if (!filled.ok) return { error: filled.error }
       if (args.write) {
+        if (!isFullyParsed(r.data)) return { error: parseIncompleteError(args.path) }
         const w = await writeOrError(args.path, filled.data.fixed)
         if (!w.ok) return { error: w.error }
       }
