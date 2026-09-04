@@ -78,6 +78,21 @@ describe('engine detection', () => {
     expect(args).not.toContain('-xelatex')
   })
 
+  it('detects xelatex for CJK body text without markers', async () => {
+    const args = await runArgs('\\documentclass{article}\n\\begin{document}\n你好，世界\n\\end{document}')
+    expect(args).toContain('-xelatex')
+  })
+
+  it('ignores CJK characters that only appear in comment lines', async () => {
+    const args = await runArgs('% 这是中文注释\n  % 缩进的注释\n\\documentclass{article}')
+    expect(args).toContain('-pdf')
+    expect(args).not.toContain('-xelatex')
+  })
+
+  it('prefers the magic comment over the CJK body heuristic', async () => {
+    expect(await runArgs('% !TeX program = lualatex\n中文正文')).toContain('-lualatex')
+  })
+
   it('honors the % !TeX program magic comment', async () => {
     expect(await runArgs('% !TeX program = xelatex\n\\documentclass{article}')).toContain('-xelatex')
   })
@@ -148,6 +163,62 @@ describe('parseLog star blocks', () => {
     const r = parseLog(log)
     expect(r.errors).toHaveLength(1)
     expect(r.errors[0]!.message).toContain('XeTeX is required')
+  })
+})
+
+describe('citation warning denoise', () => {
+  const WARN_LOG = "LaTeX Warning: Citation 'ghost2023' on page 1 undefined on input line 10.\n"
+
+  it('drops intermediate-pass warnings for keys confirmed present in the bib', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 0, log: WARN_LOG }),
+      readFile: async (p: string) =>
+        p.endsWith('.bib')
+          ? '@article{ghost2023,\n  author={A}, title={T}, journal={J}, year={2020},\n}'
+          : '\\cite{ghost2023}',
+    })
+    expect(r.ok && r.data.status).toBe('passed')
+    expect(r.ok && r.data.missingCitations).toEqual([])
+  })
+
+  it('keeps citations that are truly missing from the bib', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 0, log: WARN_LOG }),
+      readFile: async (p: string) =>
+        p.endsWith('.bib')
+          ? '@article{other2020,\n  author={A}, title={T}, journal={J}, year={2020},\n}'
+          : '\\cite{ghost2023}',
+    })
+    expect(r.ok && r.data.status).toBe('passed')
+    expect(r.ok && r.data.missingCitations).toEqual(['ghost2023'])
+  })
+
+  it('keeps the original list when the bib is unreadable', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 0, log: WARN_LOG }),
+      readFile: async (p: string) => {
+        if (p.endsWith('.bib')) throw new Error('ENOENT')
+        return '\\cite{ghost2023}'
+      },
+    })
+    expect(r.ok && r.data.status).toBe('passed')
+    expect(r.ok && r.data.missingCitations).toEqual(['ghost2023'])
+  })
+
+  it('does not denoise a failed report', async () => {
+    const r = await checkLatex('/p', 'main.tex', {
+      which: async () => true,
+      run: async () => ({ code: 1, log: WARN_LOG }),
+      readFile: async (p: string) =>
+        p.endsWith('.bib')
+          ? '@article{ghost2023,\n  author={A}, title={T}, journal={J}, year={2020},\n}'
+          : '\\cite{ghost2023}',
+    })
+    expect(r.ok && r.data.status).toBe('failed')
+    expect(r.ok && r.data.missingCitations).toEqual(['ghost2023'])
   })
 })
 

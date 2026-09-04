@@ -25,11 +25,12 @@ function fieldsFromWork(w: any): Record<string, string> {
 export async function fillBib(
   text: string,
   deps: Deps = {},
-): Promise<Result<{ fixed: string; filled: string[]; missing: string[] }>> {
+): Promise<Result<{ fixed: string; filled: string[]; missing: string[]; failed: string[] }>> {
   const fj = deps.fetchJson ?? defaultFetchJson
   const entries = parseBib(text)
   const filled: string[] = []
   const missing: string[] = []
+  const failed: string[] = []
   for (const e of entries) {
     let r: Result<unknown> | null = null
     if (e.fields.doi) {
@@ -38,7 +39,14 @@ export async function fillBib(
       r = await fj(`https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(e.fields.title)}&rows=1`)
     }
     if (!r) { missing.push(e.key); continue }
-    if (!r.ok) { missing.push(e.key); continue }
+    if (!r.ok) {
+      // NOT_FOUND means the DOI/title genuinely does not resolve; anything
+      // else (NETWORK/RATE_LIMITED/HTTP_5xx) is an infrastructure failure the
+      // caller may want to retry, so report it separately with the code.
+      if (r.error.code === 'NOT_FOUND') missing.push(e.key)
+      else failed.push(`${e.key} (${r.error.code})`)
+      continue
+    }
     const data: any = r.data
     const work = e.fields.doi ? data?.message : data?.message?.items?.[0]
     if (!work) { missing.push(e.key); continue }
@@ -48,5 +56,5 @@ export async function fillBib(
     }
     if (touched) filled.push(e.key)
   }
-  return ok({ fixed: formatBib(entries), filled, missing })
+  return ok({ fixed: formatBib(entries), filled, missing, failed })
 }

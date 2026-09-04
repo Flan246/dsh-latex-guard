@@ -36,6 +36,13 @@ interface LintIssue {
 }
 //#endregion
 //#region src/core/format.d.ts
+interface FillResult {
+  fixed: string;
+  filled: string[];
+  missing: string[];
+  failed?: string[];
+}
+declare function formatFill(d: FillResult): string;
 declare function formatIssues(issues: LintIssue[]): string;
 declare function formatReport(r: CheckReport): string;
 //#endregion
@@ -43,4 +50,4 @@ declare function formatReport(r: CheckReport): string;
 declare function printCheck(r: Result<CheckReport>, asJson: boolean): void;
 declare function guardedWriteBib(path: string, original: string, fixed: string): Promise<Result<null>>;
 //#endregion
-export { formatIssues, formatReport, guardedWriteBib, printCheck };
+export { formatFill, formatIssues, formatReport, guardedWriteBib, printCheck };

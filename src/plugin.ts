@@ -6,7 +6,7 @@ import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
 import { checkLatex, type Engine } from './core/check.js'
 import { isFullyParsed } from './core/bib-parse.js'
-import { formatIssues, formatReport } from './core/format.js'
+import { formatFill, formatIssues, formatReport } from './core/format.js'
 import type { Result } from './core/types.js'
 
 export const name = 'dsh-latex-guard'
@@ -109,7 +109,7 @@ export function apply(ctx: Context) {
     },
     output: {
       schema: { type: 'object', additionalProperties: true },
-      render: (_args, v: any) => [{ type: 'text', text: v?.error ? `Fill failed: ${v.error.message}` : `filled: ${v.filled.join(', ') || '-'}; missing: ${v.missing.join(', ') || '-'}` }],
+      render: (_args, v: any) => [{ type: 'text', text: v?.error ? `Fill failed: ${v.error.message}` : formatFill(v) }],
     },
     async execute(args) {
       const r = await readOrError(args.path)

@@ -1,4 +1,4 @@
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, r as checkLatex, t as formatIssues } from "./format-DnzdnGVx.js";
+import { a as citeAudit, i as checkLatex, l as lintBib, n as formatIssues, o as fillBib, r as formatReport, t as formatFill, u as isFullyParsed } from "./format-C9W280w0.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 
@@ -149,7 +149,7 @@ function apply(ctx) {
 			},
 			render: (_args, v) => [{
 				type: "text",
-				text: v?.error ? `Fill failed: ${v.error.message}` : `filled: ${v.filled.join(", ") || "-"}; missing: ${v.missing.join(", ") || "-"}`
+				text: v?.error ? `Fill failed: ${v.error.message}` : formatFill(v)
 			}]
 		},
 		async execute(args) {

@@ -36,6 +36,10 @@ export function detectEngine(tex: string): Engine {
   }
   if (/\\RequireXeTeX|xeCJK|\{ctex/.test(tex)) return 'xelatex'
   if (/\\RequireLuaTeX/.test(tex)) return 'lualatex'
+  // Last heuristic before the pdflatex default: CJK characters in the actual
+  // body (comment lines stripped) need a Unicode engine.
+  const body = tex.replace(/^\s*%.*$/gm, '')
+  if (/[\u4e00-\u9fff]/.test(body)) return 'xelatex'
   return 'pdflatex'
 }
 
@@ -154,10 +158,23 @@ export async function checkLatex(
   }
   const parsed = parseLog(log)
   const status = code === 0 && parsed.errors.length === 0 ? 'passed' : 'failed'
+  let missingCitations = parsed.missingCitations
+  if (status === 'passed' && missingCitations.length > 0) {
+    // latexmk logs every pass, so "Citation undefined" from intermediate
+    // passes can survive into a passed report. Cross-check against the bib
+    // (same-name .bib rule, as in the skipped path) and keep only citations
+    // that are truly absent from the bib. Unreadable bib: keep the raw list.
+    try {
+      const bib = await read(join(projectDir, basename(entry, '.tex') + '.bib'))
+      const real = new Set(citeAudit([tex], bib).missingInBib)
+      missingCitations = missingCitations.filter((k) => real.has(k))
+    } catch { /* no bib — keep the parsed list */ }
+  }
   return ok({
     status,
     engine,
     ...parsed,
+    missingCitations,
     notice: null,
     logTail: status === 'failed' && parsed.errors.length === 0 ? logTailOf(log) : null,
   })

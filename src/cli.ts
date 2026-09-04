@@ -7,10 +7,10 @@ import { fillBib } from './core/bib-fill.js'
 import { citeAudit } from './core/cite-audit.js'
 import { checkLatex, type CheckReport } from './core/check.js'
 import { isFullyParsed } from './core/bib-parse.js'
-import { formatIssues, formatReport } from './core/format.js'
+import { formatFill, formatIssues, formatReport } from './core/format.js'
 import { err, ok, type Result } from './core/types.js'
 
-export { formatIssues, formatReport }
+export { formatFill, formatIssues, formatReport }
 
 function print<T>(r: Result<T>, asJson: boolean, render: (d: T) => string): void {
   if (!r.ok) {
@@ -90,8 +90,7 @@ program.command('bib-fill').argument('<bib>').option('--write', 'write fixed bib
       const w = await guardedWriteBib(bib, text, r.data.fixed)
       if (!w.ok) { print(w, program.opts().json, () => ''); return }
     }
-    print(r, program.opts().json,
-      (d) => `filled: ${d.filled.join(', ') || '-'}\nmissing: ${d.missing.join(', ') || '-'}`)
+    print(r, program.opts().json, formatFill)
   })
 
 program.command('cite-audit').argument('<bib>').argument('<tex...>')

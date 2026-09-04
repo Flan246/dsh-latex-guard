@@ -156,7 +156,7 @@ function err(code, message) {
 
 //#endregion
 //#region src/core/http.ts
-const UA = "dsh-latex-guard/0.1.1 (mailto:latex-guard@users.noreply.github.com)";
+const UA = "dsh-latex-guard/0.1.2 (mailto:latex-guard@users.noreply.github.com)";
 const TIMEOUT_MS = 1e4;
 const CACHE_TTL_MS = 300 * 1e3;
 const CACHE_MAX = 200;
@@ -265,6 +265,7 @@ async function fillBib(text, deps = {}) {
 	const entries = parseBib(text);
 	const filled = [];
 	const missing = [];
+	const failed = [];
 	for (const e of entries) {
 		let r = null;
 		if (e.fields.doi) r = await fj(`https://api.crossref.org/works/${encodeURIComponent(e.fields.doi)}`);
@@ -274,7 +275,8 @@ async function fillBib(text, deps = {}) {
 			continue;
 		}
 		if (!r.ok) {
-			missing.push(e.key);
+			if (r.error.code === "NOT_FOUND") missing.push(e.key);
+			else failed.push(`${e.key} (${r.error.code})`);
 			continue;
 		}
 		const data = r.data;
@@ -293,7 +295,8 @@ async function fillBib(text, deps = {}) {
 	return ok({
 		fixed: formatBib(entries),
 		filled,
-		missing
+		missing,
+		failed
 	});
 }
 
@@ -324,6 +327,8 @@ function detectEngine(tex) {
 	}
 	if (/\\RequireXeTeX|xeCJK|\{ctex/.test(tex)) return "xelatex";
 	if (/\\RequireLuaTeX/.test(tex)) return "lualatex";
+	const body = tex.replace(/^\s*%.*$/gm, "");
+	if (/[\u4e00-\u9fff]/.test(body)) return "xelatex";
 	return "pdflatex";
 }
 const ENGINE_FLAG = {
@@ -416,17 +421,17 @@ async function checkLatex(projectDir, entry, deps = {}) {
 		}
 	}
 	if (!await which("latexmk")) {
-		let missingCitations = [];
+		let missingCitations$1 = [];
 		try {
 			const bib = await read(join(projectDir, basename(entry, ".tex") + ".bib"));
-			missingCitations = citeAudit([tex], bib).missingInBib;
+			missingCitations$1 = citeAudit([tex], bib).missingInBib;
 		} catch {}
 		return ok({
 			status: "skipped",
 			engine,
 			errors: [],
 			warnings: [],
-			missingCitations,
+			missingCitations: missingCitations$1,
 			notice: "latexmk not found on PATH; compile check skipped. Only cite audit was performed.",
 			logTail: null
 		});
@@ -444,10 +449,17 @@ async function checkLatex(projectDir, entry, deps = {}) {
 	}
 	const parsed = parseLog(log);
 	const status = code === 0 && parsed.errors.length === 0 ? "passed" : "failed";
+	let missingCitations = parsed.missingCitations;
+	if (status === "passed" && missingCitations.length > 0) try {
+		const bib = await read(join(projectDir, basename(entry, ".tex") + ".bib"));
+		const real = new Set(citeAudit([tex], bib).missingInBib);
+		missingCitations = missingCitations.filter((k) => real.has(k));
+	} catch {}
 	return ok({
 		status,
 		engine,
 		...parsed,
+		missingCitations,
 		notice: null,
 		logTail: status === "failed" && parsed.errors.length === 0 ? logTailOf(log) : null
 	});
@@ -455,6 +467,11 @@ async function checkLatex(projectDir, entry, deps = {}) {
 
 //#endregion
 //#region src/core/format.ts
+function formatFill(d) {
+	const lines = [`filled: ${d.filled.join(", ") || "-"}`, `missing: ${d.missing.join(", ") || "-"}`];
+	if (d.failed?.length) lines.push(`failed: ${d.failed.join(", ")}`);
+	return lines.join("\n");
+}
 function formatIssues(issues) {
 	if (issues.length === 0) return "No issues found.";
 	return issues.map((i) => `[${i.kind}] ${i.key}: ${i.detail}`).join("\n");
@@ -470,4 +487,4 @@ function formatReport(r) {
 }
 
 //#endregion
-export { fillBib as a, lintBib as c, citeAudit as i, isFullyParsed as l, formatReport as n, err as o, checkLatex as r, ok as s, formatIssues as t };
+export { citeAudit as a, ok as c, checkLatex as i, lintBib as l, formatIssues as n, fillBib as o, formatReport as r, err as s, formatFill as t, isFullyParsed as u };

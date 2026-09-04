@@ -2,7 +2,20 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { formatIssues, formatReport, guardedWriteBib, printCheck } from '../src/cli.js'
+import { formatFill, formatIssues, formatReport, guardedWriteBib, printCheck } from '../src/cli.js'
+
+describe('formatFill', () => {
+  it('shows filled and missing without a failed line when empty', () => {
+    const out = formatFill({ fixed: 'x', filled: ['a'], missing: ['b'], failed: [] })
+    expect(out).toBe('filled: a\nmissing: b')
+    expect(out).not.toContain('failed')
+  })
+
+  it('appends a failed line with error codes when present', () => {
+    const out = formatFill({ fixed: 'x', filled: [], missing: ['b'], failed: ['a (NETWORK)'] })
+    expect(out).toBe('filled: -\nmissing: b\nfailed: a (NETWORK)')
+  })
+})
 
 describe('formatIssues', () => {
   it('lists issues with key and detail', () => {

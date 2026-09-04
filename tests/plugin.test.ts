@@ -147,6 +147,13 @@ describe('plugin render branches', () => {
     expect(ok).toContain('filled: a')
   })
 
+  it('bib_fill render distinguishes failed entries', () => {
+    const out = renderText(tools.bib_fill, {},
+      { fixed: 'x', filled: [], missing: ['b'], failed: ['a (NETWORK)'] })
+    expect(out).toContain('missing: b')
+    expect(out).toContain('failed: a (NETWORK)')
+  })
+
   it('cite_audit renders error and success', () => {
     expect(renderText(tools.cite_audit, {}, { error: err })).toContain('Audit failed: boom')
     const ok = renderText(tools.cite_audit, {}, { missingInBib: ['k1'], uncited: [] })

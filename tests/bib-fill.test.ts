@@ -43,4 +43,33 @@ describe('fillBib', () => {
     expect(r.ok && r.data.missing).toEqual(['empty'])
     expect(fetchJson).not.toHaveBeenCalled()
   })
+
+  it('classifies network failures into failed with the error code', async () => {
+    const fetchJson = vi.fn(async () => err('NETWORK', 'connect timeout'))
+    const r = await fillBib(BIB, { fetchJson })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.data.missing).toEqual([])
+    expect(r.data.failed).toEqual(['zhang2020 (NETWORK)'])
+  })
+
+  it('classifies rate limiting into failed', async () => {
+    const fetchJson = vi.fn(async () => err('RATE_LIMITED', '429'))
+    const r = await fillBib(BIB, { fetchJson })
+    expect(r.ok && r.data.failed).toEqual(['zhang2020 (RATE_LIMITED)'])
+    expect(r.ok && r.data.missing).toEqual([])
+  })
+
+  it('separates missing and failed in a mixed scenario', async () => {
+    const bib = BIB +
+      '@article{lee2021,\n  title = {No Such},\n  doi = {10.1000/absent},\n}\n' +
+      '@misc{empty,\n  note = {x},\n}\n'
+    const fetchJson = vi.fn(async (url: string) =>
+      url.includes('absent') ? err('NOT_FOUND', '404') : err('NETWORK', 'proxy down'))
+    const r = await fillBib(bib, { fetchJson })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.data.missing).toEqual(['lee2021', 'empty'])
+    expect(r.data.failed).toEqual(['zhang2020 (NETWORK)'])
+  })
 })

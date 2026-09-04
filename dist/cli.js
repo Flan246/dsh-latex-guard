@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { a as fillBib, c as lintBib, i as citeAudit, l as isFullyParsed, n as formatReport, o as err, r as checkLatex, s as ok, t as formatIssues } from "./format-DnzdnGVx.js";
+import { a as citeAudit, c as ok, i as checkLatex, l as lintBib, n as formatIssues, o as fillBib, r as formatReport, s as err, t as formatFill, u as isFullyParsed } from "./format-C9W280w0.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Command } from "commander";
@@ -78,7 +78,7 @@ program.command("bib-fill").argument("<bib>").option("--write", "write fixed bib
 			return;
 		}
 	}
-	print(r, program.opts().json, (d) => `filled: ${d.filled.join(", ") || "-"}\nmissing: ${d.missing.join(", ") || "-"}`);
+	print(r, program.opts().json, formatFill);
 });
 program.command("cite-audit").argument("<bib>").argument("<tex...>").action(async (bib, texs) => {
 	let bibText;
@@ -98,4 +98,4 @@ program.command("cite-audit").argument("<bib>").argument("<tex...>").action(asyn
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) program.parseAsync();
 
 //#endregion
-export { formatIssues, formatReport, guardedWriteBib, printCheck };
+export { formatFill, formatIssues, formatReport, guardedWriteBib, printCheck };
