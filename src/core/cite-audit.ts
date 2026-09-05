@@ -1,6 +1,11 @@
 import { parseBib } from './bib-parse.js'
 
-const CITE_RE = /\\(?:cite|citep|citet|parencite|textcite)(?:\[[^\]]*\]){0,2}\{([^}]*)\}/g
+// Alternation order matters: `cite` is a prefix substring of `citep`/`citet`,
+// so a failed `\cite` attempt must be able to fall through to the longer names.
+// `\nocite{key}` lists the entry in the bibliography without an in-text citation;
+// it is treated as cited here (never uncited), while a key absent from the bib
+// still lands in missingInBib — the plain `cited` set models this naturally.
+const CITE_RE = /\\(?:cite|citep|citet|parencite|textcite|autocite|footcite|fullcite|nocite)(?:\[[^\]]*\]){0,2}\{([^}]*)\}/g
 
 export function citeAudit(
   texSources: string[],

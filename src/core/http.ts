@@ -1,7 +1,7 @@
 import { fetch as undiciFetch, ProxyAgent } from 'undici'
 import { err, ok, type Result } from './types.js'
 
-const UA = 'dsh-latex-guard/0.1.2 (mailto:latex-guard@users.noreply.github.com)'
+const UA = 'dsh-latex-guard/0.1.3 (mailto:latex-guard@users.noreply.github.com)'
 const TIMEOUT_MS = 10_000
 const CACHE_TTL_MS = 5 * 60 * 1000
 const CACHE_MAX = 200

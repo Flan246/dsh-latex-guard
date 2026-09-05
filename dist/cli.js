@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { a as citeAudit, c as ok, i as checkLatex, l as lintBib, n as formatIssues, o as fillBib, r as formatReport, s as err, t as formatFill, u as isFullyParsed } from "./format-C9W280w0.js";
+import { a as citeAudit, c as ok, i as checkLatex, l as lintBib, n as formatIssues, o as fillBib, r as formatReport, s as err, t as formatFill, u as isFullyParsed } from "./format-CiYSfXyq.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { Command } from "commander";

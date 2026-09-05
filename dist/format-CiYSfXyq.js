@@ -156,7 +156,7 @@ function err(code, message) {
 
 //#endregion
 //#region src/core/http.ts
-const UA = "dsh-latex-guard/0.1.2 (mailto:latex-guard@users.noreply.github.com)";
+const UA = "dsh-latex-guard/0.1.3 (mailto:latex-guard@users.noreply.github.com)";
 const TIMEOUT_MS = 1e4;
 const CACHE_TTL_MS = 300 * 1e3;
 const CACHE_MAX = 200;
@@ -302,7 +302,7 @@ async function fillBib(text, deps = {}) {
 
 //#endregion
 //#region src/core/cite-audit.ts
-const CITE_RE = /\\(?:cite|citep|citet|parencite|textcite)(?:\[[^\]]*\]){0,2}\{([^}]*)\}/g;
+const CITE_RE = /\\(?:cite|citep|citet|parencite|textcite|autocite|footcite|fullcite|nocite)(?:\[[^\]]*\]){0,2}\{([^}]*)\}/g;
 function citeAudit(texSources, bibText) {
 	const cited = /* @__PURE__ */ new Set();
 	for (const tex of texSources) for (const m of tex.matchAll(CITE_RE)) for (const k of m[1].split(",")) {

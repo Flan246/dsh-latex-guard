@@ -7,7 +7,7 @@ LaTeX compile check and BibTeX lint/fill/audit tools for DeepSeek Harness and an
 - **check** — compile a LaTeX project with `latexmk` and return a structured report of errors, warnings and undefined citations
 - **bib-lint** — dedupe entry keys, check required fields per entry type, canonicalize formatting
 - **bib-fill** — fill missing entry fields from Crossref by DOI or title (never overwrites existing values)
-- **cite-audit** — compare `\cite` keys in `.tex` files against a `.bib` file: cited-but-missing and never-cited entries
+- **cite-audit** — compare citation keys in `.tex` files against a `.bib` file: cited-but-missing and never-cited entries. Recognized commands: `\cite`, `\citep`, `\citet`, `\parencite`, `\textcite`, and the biblatex commands `\autocite`, `\footcite`, `\fullcite`, `\nocite` (a `\nocite` key counts as cited).
 
 All commands return human-readable output by default and structured JSON with `--json`. Exit codes: 0 success, 1 business error, 2 usage error. A `check` that compiles but reports `status: "failed"` also exits 1; a `skipped` check (latexmk unavailable) exits 0, since graceful degradation is not an error.
 
