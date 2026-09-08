@@ -1,0 +1,8 @@
+name: 编译验证
+plugins: [dsh-latex-guard]
+workdir: .
+prompt: 帮我确认这个 LaTeX 项目能编译通过，有问题就修好后重新编译确认。
+timeout: 900
+assertions:
+  - tool_called: latex_check
+  - output_matches: '[Pp]ass(ed)?|通过|成功'

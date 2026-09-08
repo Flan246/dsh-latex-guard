@@ -1,0 +1,8 @@
+name: 引用完整性对账
+plugins: [dsh-latex-guard]
+workdir: .
+prompt: 这个 LaTeX 项目的引用好像有问题，帮我检查引用是否完整，报告哪些引用缺条目、哪些条目没被引用。先别改文件。
+timeout: 600
+assertions:
+  - tool_called: cite_audit
+  - output_matches: ghost2024moe

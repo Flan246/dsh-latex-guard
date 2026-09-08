@@ -1,0 +1,9 @@
+name: bib 缺失字段补全
+plugins: [dsh-latex-guard]
+workdir: .
+prompt: 我这个 refs.bib 里好多条目缺年份和期刊，帮我补全一下。已有内容不要动。
+timeout: 600
+assertions:
+  - tool_called: bib_fill
+  - file_contains: [refs.bib, "year = {2015}"]
+  - file_contains: [refs.bib, "LeCun, Yann"]

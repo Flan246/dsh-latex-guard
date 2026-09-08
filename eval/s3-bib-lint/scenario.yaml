@@ -1,0 +1,8 @@
+name: bib 静态检查
+plugins: [dsh-latex-guard]
+workdir: .
+prompt: 帮我检查一下 refs.bib 有没有问题（重复 key、缺字段之类），报告出来。先别改文件。
+timeout: 600
+assertions:
+  - tool_called: bib_lint
+  - output_matches: 'duplicate|missing|重复|缺'
