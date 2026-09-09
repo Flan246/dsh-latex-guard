@@ -1,5 +1,10 @@
 # dsh-latex-guard
 
+[![npm version](https://img.shields.io/npm/v/dsh-latex-guard)](https://www.npmjs.com/package/dsh-latex-guard)
+[![npm downloads](https://img.shields.io/npm/dw/dsh-latex-guard)](https://www.npmjs.com/package/dsh-latex-guard)
+[![GitHub stars](https://img.shields.io/github/stars/Flan246/dsh-latex-guard)](https://github.com/Flan246/dsh-latex-guard)
+[![license](https://img.shields.io/npm/l/dsh-latex-guard)](./LICENSE)
+
 LaTeX compile check and BibTeX lint/fill/audit tools for DeepSeek Harness and any agent.
 
 ## Features
